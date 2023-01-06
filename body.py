@@ -32,7 +32,9 @@ class Body:
 
         if destination.x > core.WINDOW_SIZE[0] or destination.x < 0:
             self.vitesse.x *= -1
+            self.acceleration.x *= -1
         if destination.y > core.WINDOW_SIZE[1] or destination.y < 0:
             self.vitesse.y *= -1
+            self.acceleration.y *= -1
 
         self.position += self.vitesse

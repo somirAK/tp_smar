@@ -7,7 +7,7 @@ class CircularFustrum:
     def __init__(self, parent = None):
         self.parent = parent
         self.perception_list = list()  # liste des agents perçus
-        self.vision_range = 150  # champ de vision
+        self.vision_range = 100  # champ de vision
 
     def perception(self):
         """

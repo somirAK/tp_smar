@@ -49,7 +49,6 @@ class Agent:
             selon la nature de l'objet perçu.
             L'attraction et la répulsion est ensuite ajouté a l'accéleration du body
         """
-
         agents, obstacles, creeps = self.filter()
         attraction = Vector2(0, 0)
         repulsion = Vector2(0, 0)
@@ -74,7 +73,7 @@ class Agent:
                 attraction_intensity *= 0.05
 
         if repulsion.length() != 0:
-            repulsion.scale_to_length(1/(repulsion.length()**2))
+            repulsion.scale_to_length(1/(repulsion.length()**0.2))
 
         self.body.acceleration = attraction + repulsion
 
