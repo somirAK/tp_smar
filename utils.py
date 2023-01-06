@@ -3,16 +3,24 @@ import core
 import numpy as np
 from pygame.math import Vector2
 
-NB_AGENTS = 3
-NB_OBSTACLES = 3
-NB_CREEPS = 70
+NB_AGENTS_SAINS = 100
+AGENT_WIDTH = 5
 
 KEY_AGENTS = "agents"
-KEY_ITEMS = "items"
 
-AGENT_WIDTH = 20
-ITEM_WIDTH = 3
-OBSTACLE_WIDTH = 25
+SAINS = "sains"
+INCUBE = "incube"
+INFECTE = "infecte"
+RETABLI = "retabli"
+MORT = "mort"
+
+
+
+COLOR_SAINS = (0,255,0)
+COLOR_INCUBE = (0,255,255)
+COLOR_INFECTE = (255,0,0)
+COLOR_RETABLI = (0,0,255)
+COLOR_MORT = (255,255,255)
 
 UUID_EXPETIONS = list()
 POSITION_EXCEPTIONS = list()

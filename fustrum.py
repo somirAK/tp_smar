@@ -19,9 +19,6 @@ class CircularFustrum:
         for agent in core.memory(utils.KEY_AGENTS):
             if self.inside(agent.body):
                 self.perception_list.append(agent)
-        for item in core.memory(utils.KEY_ITEMS):
-            if self.inside(item):
-                self.perception_list.append(item)
         return self.perception_list
 
     def inside(self, obj):

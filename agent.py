@@ -1,17 +1,24 @@
+import random
+
 from pygame.math import Vector2
 
 import body
 import core
+import epidemie
 import utils
-import item as _item
 
 
 class Agent:
-    def __init__(self):
+    def __init__(self, status=utils.SAINS):
         self.uuid = utils.random_uuid()
-        self.body = body.Body()
-        self.color = utils.random_color()
+        self.body = body.Body(status)
         self.perception_list = list()
+
+        self.separationFactor=1
+        self.alignFactor = 0.1
+        self.cohesionFactor = 1
+        self.se=Vector2()
+        self.co = Vector2()
 
     def perception(self):
         """
@@ -20,28 +27,8 @@ class Agent:
 
         self.perception_list = self.body.fustrum.perception()
 
-    def filter(self):
-        """
-            Analyse les différents élements perçus par le body
-        """
-
-        agents = list()
-        obstacles = list()
-        creeps = list()
-
-        for obj in self.perception_list:
-            if isinstance(obj, Agent):
-                agents.append(obj)
-            if isinstance(obj, _item.Obstacle):
-                obstacles.append(obj)
-            if isinstance(obj, _item.Creep):
-                creeps.append(obj)
-
-        agents.sort(key=lambda a: a.body.position.distance_squared_to(self.body.position), reverse=False)
-        creeps.sort(key=lambda c: c.position.distance_squared_to(self.body.position), reverse=False)
-        obstacles.sort(key=lambda o: o.position.distance_squared_to(self.body.position), reverse=False)
-
-        return agents, obstacles, creeps
+    def status(self):
+        return self.body.status
 
     def decision(self):
         """
@@ -49,39 +36,100 @@ class Agent:
             selon la nature de l'objet perçu.
             L'attraction et la répulsion est ensuite ajouté a l'accéleration du body
         """
-        agents, obstacles, creeps = self.filter()
-        attraction = Vector2(0, 0)
-        repulsion = Vector2(0, 0)
 
-        if len(creeps) == 0:
-            return utils.random_vector2(core.WINDOW_SIZE[0], core.WINDOW_SIZE[1])
+        if self.status() != utils.MORT:
+            self.body.acceleration = Vector2(random.uniform(-5, 5), random.uniform(-5, 5))
 
-        attraction_intensity = 2
-        for creep in creeps:
-            attraction += (creep.position - self.body.position) * attraction_intensity
-            attraction_intensity *= 0.05
+    def peut_contaminer(self, obj):
 
-        for obstacle in obstacles:
-            repulsion += self.body.position - obstacle.position
-
-        attraction_intensity = 2
-        for agent in agents:
-            if agent.body.width > self.body.width:
-                repulsion += self.body.position - agent.body.position
-            else:
-                attraction += (agent.body.position - self.body.position) * attraction_intensity
-                attraction_intensity *= 0.05
-
-        if repulsion.length() != 0:
-            repulsion.scale_to_length(1/(repulsion.length()**0.2))
-
-        self.body.acceleration = attraction + repulsion
-
-    def can_eat(self, obj):
         if isinstance(obj, Agent):
-            return self.body.position.distance_to(obj.body.position) < self.body.width
+            return self.body.position.distance_to(
+                obj.body.position) < epidemie.DISTANCE_MINI_CONTAGION and self.body.peut_contaminer and random.random() < epidemie.POURCENTAGE_CONTAGION
         else:
-            return self.body.position.distance_to(obj.position) < self.body.width
+            return False
+
+    def est_contamine(self):
+        self.body.status = utils.INCUBE
 
     def show(self):
-        core.Draw.circle(self.color, self.body.position, self.body.width)
+        if self.status() == utils.SAINS:
+            core.Draw.circle(utils.COLOR_SAINS, self.body.position, self.body.width)
+        elif self.status() == utils.INCUBE:
+            core.Draw.circle(utils.COLOR_INCUBE, self.body.position, self.body.width)
+        elif self.status() == utils.INFECTE:
+            core.Draw.circle(utils.COLOR_INFECTE, self.body.position, self.body.width)
+        elif self.status() == utils.RETABLI:
+            core.Draw.circle(utils.COLOR_RETABLI, self.body.position, self.body.width)
+        elif self.status() == utils.MORT:
+            core.Draw.circle(utils.COLOR_MORT, self.body.position, self.body.width)
+
+    def flock(self, agents):
+        perception = self.perception_list
+
+        self.co = self.cohesion(perception) * self.cohesionFactor
+        al = self.align(perception) * self.alignFactor
+        self.se = self.separation(perception) * -self.separationFactor
+
+        self.acceleration += self.se + self.co + al
+        
+    
+    def separation(self,agents):
+        steering = Vector2()
+        agentscounter = 0
+        for other in agents:
+            if self.position.distance_to(other.position) != 0:
+                diff = Vector2(other.position.x-self.position.x,other.position.y-self.position.y)
+                if diff.length() > 0.001:
+                    diff.scale_to_length(self.position.distance_squared_to(other.position))
+                    agentscounter += 1
+                    steering += diff
+            else:
+                steering += Vector2(random.uniform(-5,5),random.uniform(-5,5))
+                agentscounter += 1
+
+        if agentscounter > 0:
+            steering /= agentscounter
+
+            steering += self.vitesse
+
+            if steering.length() > self.maxAcc:
+                steering = steering.normalize()
+                steering.scale_to_length(self.maxAcc)
+        return steering
+
+    def cohesion(self,agents):
+        steering = Vector2()
+        agentscounter = 0
+        for other in agents:
+            if self.position.distance_to(other.position) != 0:
+                agentscounter += 1
+                steering += other.position
+
+        if agentscounter > 0:
+            steering /= agentscounter
+            steering -= self.position
+
+
+            steering += self.vitesse
+            if steering.length() > self.maxAcc:
+                steering = steering.normalize()
+                steering.scale_to_length(self.maxAcc)
+
+        return steering
+
+    def align(self, agents):
+        steering = Vector2()
+        agentscounter = 0
+        for other in agents:
+            agentscounter+=1
+            steering+=other.vitesse
+
+        if agentscounter>0:
+            steering/=agentscounter
+
+            steering -= self.vitesse
+            if steering.length() > self.maxAcc:
+                steering=steering.normalize()
+                steering.scale_to_length(self.maxAcc)
+
+        return steering

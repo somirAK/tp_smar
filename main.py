@@ -1,16 +1,14 @@
+import math
+
 import core
 import agent as _agent
-import item as _item
 import utils
+from pygame.math import Vector2
 
 
 def add_random_entities():
-    for i in range(utils.NB_AGENTS):
-        core.memory(utils.KEY_AGENTS).append(_agent.Agent())
-    for i in range(utils.NB_OBSTACLES):
-        core.memory(utils.KEY_ITEMS).append(_item.Obstacle())
-    for i in range(utils.NB_CREEPS):
-        core.memory(utils.KEY_ITEMS).append(_item.Creep())
+    for i in range(utils.NB_AGENTS_SAINS):
+        core.memory(utils.KEY_AGENTS).append(_agent.Agent(utils.SAINS))
 
 
 def setup():
@@ -19,7 +17,6 @@ def setup():
     core.WINDOW_SIZE = [800, 600]
 
     core.memory(utils.KEY_AGENTS, [])
-    core.memory(utils.KEY_ITEMS, [])
 
     add_random_entities()
     print("Setup END-----------")
@@ -30,39 +27,74 @@ def compute_perception(agent):
 
 
 def compute_decision(agent):
-    agent.decision()
+    if agent.status() != utils.MORT:
+        agent.decision()
 
 
 def apply_decision(agent):
-    agent.body.move()
+    if agent.status() != utils.MORT:
+        agent.body.move()
 
 
 def update_environnement(agent):
-    for item in core.memory(utils.KEY_ITEMS):
-        if agent.can_eat(item):
-            if isinstance(item, _item.Obstacle):
-                core.memory(utils.KEY_AGENTS).remove(agent)
-            if isinstance(item, _item.Creep):
-                core.memory(utils.KEY_ITEMS).remove(item)
-                agent.body.width += item.width
-    # for agent_i in core.memory(utils.KEY_AGENTS):
-    #     if agent.can_eat(agent_i):
-    #         if agent.body.width > agent_i.body.width:
-    #             core.memory(utils.KEY_AGENTS).remove(agent_i)
-    #             agent.body.width += agent_i.body.width
-    #         else:
-    #             core.memory(utils.KEY_AGENTS).remove(agent)
-    #             agent_i.body.width += agent.body.width
+    for agent_i in core.memory(utils.KEY_AGENTS):
+        if agent.peut_contaminer(agent_i):
+            agent_i.est_contamine()
+
+
+def update_closest_agent(click_position):
+    min_distance = math.inf;
+    closest_agent = None
+
+    position = Vector2(click_position[0], click_position[1])
+
+    for agent in core.memory(utils.KEY_AGENTS):
+        current_distance = agent.body.position.distance_to(position)
+        if current_distance < min_distance:
+            min_distance = current_distance
+            closest_agent = agent
+
+    closest_agent.est_contamine()
+
+
+def update_agent_states(agent):
+    agent.body.update()
+
+
+def show_environement_state():
+    nb_sains = 0.0
+    nb_incube = 0.0
+    nb_infecte = 0.0
+    nb_retabli = 0.0
+    nb_mort = 0.0
+
+    nb_agents = len(core.memory(utils.KEY_AGENTS))
+
+    for agent in core.memory(utils.KEY_AGENTS):
+        if agent.body.status == utils.SAINS:
+            nb_sains += 1.0
+        if agent.body.status == utils.INCUBE:
+            nb_incube += 1.0
+        if agent.body.status == utils.INFECTE:
+            nb_infecte += 1.0
+        if agent.body.status == utils.RETABLI:
+            nb_retabli += 1.0
+        if agent.body.status == utils.MORT:
+            nb_mort += 1.0
+
+    print("nb_sains=" + str((nb_sains / nb_agents) * 100) + "%, nb_incube=" + str(
+        (nb_incube / nb_agents) * 100) + "%, nb_infecte=" + str((nb_infecte / nb_agents) * 100) + "%, nb_retabli=" + str(
+        (nb_retabli / nb_agents) * 100) + "%, nb_mort=" + str((nb_mort / nb_agents) * 100) +"%")
 
 
 def run():
     core.cleanScreen()
 
+    if core.getMouseLeftClick():
+        update_closest_agent(core.getMouseLeftClick())
+
     for agent in core.memory(utils.KEY_AGENTS):
         agent.show()
-
-    for item in core.memory(utils.KEY_ITEMS):
-        item.show()
 
     for agent in core.memory(utils.KEY_AGENTS):
         compute_perception(agent)
@@ -75,6 +107,11 @@ def run():
 
     for agent in core.memory(utils.KEY_AGENTS):
         update_environnement(agent)
+
+    for agent in core.memory(utils.KEY_AGENTS):
+        update_agent_states(agent)
+
+    show_environement_state()
 
 
 core.main(setup, run)
